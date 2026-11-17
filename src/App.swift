@@ -387,7 +387,9 @@ class App: AppCenterApplication {
         Applications.refreshBadgesAsync()
     }
 
-    static func showUiOrCycleSelection(_ shortcutIndex: Int, _ forceDoNothingOnRelease_: Bool) {
+    /// `direction` is `.trailing` for the Trigger's reverse press: a summon then starts on the last window
+    /// instead of the default pick, and a press while showing steps backward.
+    static func showUiOrCycleSelection(_ shortcutIndex: Int, _ forceDoNothingOnRelease_: Bool, _ direction: Direction = .leading) {
         guard !StartupRecovery.isRecovering else { return }
         MainThreadStall.step()
         if !SwitcherSession.isActive { DismissalInput.cancel() }
@@ -428,6 +430,7 @@ class App: AppCenterApplication {
             }
             if !Windows.updatesBeforeShowing() { hideUi(); return }
             Windows.setInitialSelectedAndHoveredWindowIndex()
+            if direction == .trailing { Windows.selectLastDisplayedWindow() }
             // Discovery lands one window at a time: a nonempty list can still omit the front app. C-01
             // caught TextEdit arriving 13ms before Finder and bypassing the empty-list grace. Wait for a
             // pending inventory too, capped so an unavailable app cannot hold the first summon forever.
@@ -448,8 +451,8 @@ class App: AppCenterApplication {
                 DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + displayDelay, execute: work)
             }
         } else {
-            cycleSelection(.leading)
-            KeyRepeatTimer.startRepeatingKeyNextWindow()
+            cycleSelection(direction)
+            KeyRepeatTimer.startRepeatingKeyTriggerPress()
         }
     }
 
@@ -475,7 +478,7 @@ class App: AppCenterApplication {
         if TilesView.isSearchEditing {
             TilesView.enableSearchEditing()
         }
-        KeyRepeatTimer.startRepeatingKeyNextWindow()
+        KeyRepeatTimer.startRepeatingKeyTriggerPress()
         let prioritizedIds = TilesView.windowIdsInViewport()
         WindowThumbnails.refreshAsync(Windows.list, .refreshOnlyThumbnailsAfterShowUi, prioritizedIds: prioritizedIds)
         #if DEBUG

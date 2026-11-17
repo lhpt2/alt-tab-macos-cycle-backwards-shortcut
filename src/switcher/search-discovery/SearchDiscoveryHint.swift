@@ -239,9 +239,9 @@ final class SearchDiscoveryHint {
         let index = SwitcherSession.activeShortcutIndex
         let hold = ControlsTab.shortcuts[Preferences.indexToName("holdShortcut", index)]?.shortcut.carbonModifierFlags.cleaned() ?? 0
         let modifiers = shortcut.carbonModifierFlags.cleaned() | hold
-        let next = Preferences.indexToName("nextWindowShortcut", index)
+        let presses = TriggerShortcut.pressBaseNames.map { Preferences.indexToName($0, index) }
         guard !ControlsTab.shortcuts.contains(where: { key, entry in
-            guard key != "searchShortcut", entry.scope == .local || key == next,
+            guard key != "searchShortcut", entry.scope == .local || presses.contains(key),
                   entry.index == nil || entry.index == index else { return false }
             let other = entry.shortcut
             return other.keyCode == shortcut.keyCode && (other.carbonModifierFlags.cleaned() | hold) == modifiers
@@ -305,7 +305,7 @@ final class SearchDiscoveryHint {
                   )) else { continue }
             let conflicts = ControlsTab.shortcuts.contains { id, entry in
                 id != Preferences.indexToName("nextWindowShortcut", index) && !id.hasPrefix("holdShortcut")
-                    && (entry.scope == .local || id.hasPrefix("nextWindowShortcut"))
+                    && (entry.scope == .local || TriggerShortcut.isPress(id))
                     && entry.shortcut.keyCode == next.keyCode
                     &&
                     (entry.shortcut.carbonModifierFlags.cleaned() |

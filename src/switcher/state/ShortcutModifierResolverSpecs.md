@@ -16,7 +16,7 @@ only compares bits, so tests use opaque bit values.
 
 1. **holdShortcut** — the event must contain *at least* the shortcut's modifiers (`event == event | shortcut`).
    This is the "is the activation modifier held" check, so extra modifiers don't disqualify it.
-2. **nextWindowShortcut while a session is active** — also match the base key with the hold modifiers
+2. **A Trigger press (`nextWindowShortcut` or `reverseWindowShortcut`) while a session is active** — also match the base key with the hold modifiers
    stripped (`event == shortcut & ~hold`), so a configured ⌥⇥ keeps cycling on bare ⇥ once the switcher
    is already showing. Only consulted when `sessionActive`; falls through otherwise.
 3. **search-editing gate for modifier-only shortcuts** — while editing the search field, a bare

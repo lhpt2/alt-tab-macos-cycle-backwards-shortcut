@@ -71,6 +71,9 @@ final class ShortcutEditor {
         triggerTable.addRow(TableGroupView.Row(
             leftTitle: ShortcutEditor.triggerLabel,
             rightViews: [trigger.view]))
+        triggerTable.addRow(TableGroupView.Row(
+            leftTitle: TriggerBinding.selectPreviousText,
+            rightViews: [trigger.reverseView]))
 
         let labels = [
             ShortcutEditor.tabLabelFiltering,
@@ -204,37 +207,38 @@ final class ShortcutEditor {
     }
 }
 
-// MARK: - Trigger row (hold + next-window recorders)
+// MARK: - Trigger rows (hold + next-window + reverse-window recorders)
 
-/// The Trigger row owns two recorders (hold + next-window). They have a cross-reference: the
-/// next-window recorder is restricted to the modifiers of the hold key. On rebind we swap both
-/// recorders' identifiers, refresh both displayed values, and resync `shortcutControls` so other
-/// modules (CustomRecorderControl, the conflict detector) find the right control.
+/// The Trigger rows own three recorders (hold + next-window + reverse-window). They have a
+/// cross-reference: both press recorders are restricted to the modifiers of the hold key, which
+/// they share. On rebind we swap the recorders' identifiers, refresh their displayed values, and
+/// resync `shortcutControls` so other modules (CustomRecorderControl, the conflict detector) find
+/// the right control.
 final class TriggerBinding {
     let view: NSView
+    /// The reverse-window row: "and press" plus its recorder, under the same hold as `view`.
+    let reverseView: NSView
     private let holdRecorder: CustomRecorderControl
     private let nextRecorder: CustomRecorderControl
+    private let reverseRecorder: CustomRecorderControl
     private let andPressLabel: NSTextField
     private static let holdLabelText = NSLocalizedString("Hold", comment: "")
     private static let andPressText = NSLocalizedString("and press", comment: "")
-    // The next-window recorder's human-readable name, stored alongside it in `shortcutControls`.
+    // The press recorders' human-readable names, stored alongside them in `shortcutControls`.
     private static let selectNextText = NSLocalizedString("Select next window", comment: "")
+    static let selectPreviousText = NSLocalizedString("Select previous window", comment: "")
     private var currentIndex: Int = -1
 
     init() {
         // Placeholder identifier — replaced in bind().
         holdRecorder = CustomRecorderControl(nil, false, "holdShortcut0")
         nextRecorder = CustomRecorderControl(nil, true, "nextWindowShortcut0")
+        reverseRecorder = CustomRecorderControl(nil, true, "reverseWindowShortcut0")
 
         let holdLabelField = LabelAndControl.makeLabel(TriggerBinding.holdLabelText)
         andPressLabel = LabelAndControl.makeLabel(TriggerBinding.andPressText)
-
-        let stack = NSStackView(views: [holdLabelField, holdRecorder, andPressLabel, nextRecorder])
-        stack.orientation = .horizontal
-        stack.alignment = .centerY
-        stack.spacing = TableGroupView.spacing
-        stack.heightAnchor.constraint(equalToConstant: ShortcutEditor.triggerRowContentHeight).isActive = true
-        view = stack
+        view = TriggerBinding.makeRow([holdLabelField, holdRecorder, andPressLabel, nextRecorder])
+        reverseView = TriggerBinding.makeRow([LabelAndControl.makeLabel(TriggerBinding.andPressText), reverseRecorder])
 
         // Recorder edits need three things to happen in order:
         // 1. Persist the new shortcut into `Preferences` (via `controlWasChanged`). Otherwise
@@ -257,6 +261,20 @@ final class TriggerBinding {
             ControlsTab.shortcutChangedCallback(self.nextRecorder)
             ControlsTab.refreshShortcutRowContent(forIndex: self.currentIndex)
         }
+        reverseRecorder.onAction = { [weak self] _ in
+            guard let self else { return }
+            LabelAndControl.controlWasChanged(self.reverseRecorder, nil)
+            ControlsTab.shortcutChangedCallback(self.reverseRecorder)
+        }
+    }
+
+    private static func makeRow(_ views: [NSView]) -> NSView {
+        let stack = NSStackView(views: views)
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = TableGroupView.spacing
+        stack.heightAnchor.constraint(equalToConstant: ShortcutEditor.triggerRowContentHeight).isActive = true
+        return stack
     }
 
     func bind(toShortcut index: Int) {
@@ -264,22 +282,24 @@ final class TriggerBinding {
         if currentIndex >= 0 {
             ControlsTab.shortcutControls.removeValue(forKey: Preferences.indexToName("holdShortcut", currentIndex))
             ControlsTab.shortcutControls.removeValue(forKey: Preferences.indexToName("nextWindowShortcut", currentIndex))
+            ControlsTab.shortcutControls.removeValue(forKey: Preferences.indexToName("reverseWindowShortcut", currentIndex))
         }
         currentIndex = index
         let holdKey = Preferences.indexToName("holdShortcut", index)
-        let nextKey = Preferences.indexToName("nextWindowShortcut", index)
         holdRecorder.identifier = NSUserInterfaceItemIdentifier(holdKey)
-        nextRecorder.identifier = NSUserInterfaceItemIdentifier(nextKey)
         holdRecorder.objectValue = Preferences.shortcut(holdKey)
-        nextRecorder.objectValue = Preferences.shortcut(nextKey)
         ControlsTab.shortcutControls[holdKey] = (holdRecorder, TriggerBinding.holdLabelText)
-        ControlsTab.shortcutControls[nextKey] = (nextRecorder, TriggerBinding.selectNextText)
-        // Reapply modifier restriction on the next-window recorder based on the hold shortcut.
-        if let holdModifiers = Preferences.shortcut(holdKey)?.modifierFlags {
-            nextRecorder.restrictModifiers(holdModifiers)
-        } else {
-            nextRecorder.restrictModifiers([])
-        }
+        let holdModifiers = Preferences.shortcut(holdKey)?.modifierFlags ?? []
+        bindPress(nextRecorder, Preferences.indexToName("nextWindowShortcut", index), TriggerBinding.selectNextText, holdModifiers)
+        bindPress(reverseRecorder, Preferences.indexToName("reverseWindowShortcut", index), TriggerBinding.selectPreviousText, holdModifiers)
+    }
+
+    /// A press recorder can't take the hold's modifiers: they're already part of the chord.
+    private func bindPress(_ recorder: CustomRecorderControl, _ key: String, _ label: String, _ holdModifiers: NSEvent.ModifierFlags) {
+        recorder.identifier = NSUserInterfaceItemIdentifier(key)
+        recorder.objectValue = Preferences.shortcut(key)
+        ControlsTab.shortcutControls[key] = (recorder, label)
+        recorder.restrictModifiers(holdModifiers)
     }
 }
 

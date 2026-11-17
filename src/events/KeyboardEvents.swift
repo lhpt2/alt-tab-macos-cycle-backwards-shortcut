@@ -108,7 +108,7 @@ class KeyboardEvents {
 
     private static func claimRecordedRelease(_ globalId: Int) -> Bool {
         guard let controlId = KeyboardEventsTestable.globalShortcutsIds.first(where: { $0.value == globalId })?.key,
-              controlId.hasPrefix("nextWindowShortcut"), let control = ControlsTab.shortcuts[controlId],
+              TriggerShortcut.isPress(controlId), let control = ControlsTab.shortcuts[controlId],
               let hold = ControlsTab.shortcuts[Preferences.indexToName("holdShortcut", Preferences.nameToIndex(controlId))]
         else { return false }
         return ModifierReleaseLog.claimRelease(after: chord(control),
@@ -119,7 +119,7 @@ class KeyboardEvents {
     /// `excluding`.
     private static func switchingChords(excluding removedControlId: String? = nil) -> Set<ModifierReleaseLog.Chord> {
         Set(ControlsTab.shortcuts.values
-            .filter { $0.id.hasPrefix("nextWindowShortcut") && $0.id != removedControlId }
+            .filter { TriggerShortcut.isPress($0.id) && $0.id != removedControlId }
             .map { chord($0) })
     }
 

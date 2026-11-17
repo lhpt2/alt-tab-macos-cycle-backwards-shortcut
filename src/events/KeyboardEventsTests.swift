@@ -17,6 +17,24 @@ final class KeyboardEventsUtilsTests: XCTestCase {
         XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["nextWindowShortcut", "holdShortcut"])
     }
 
+    // alt-down > shift-tab-down > tab-down > shift-tab-up > alt-up
+    func testReverseWindowPressSummonsAndCyclesUnderTheSameHold() throws {
+        resetState()
+        ControlsTab.shortcuts["reverseWindowShortcut"] = ATShortcut(Shortcut(keyEquivalent: "⌥⇧⇥")!, "reverseWindowShortcut", .global, .down)
+        defer { ControlsTab.shortcuts = ControlsTab.defaultShortcuts }
+        ModifierFlags.current = [.option]
+        handleKeyboardEvent(nil, nil, nil, [.option], false)
+        handleKeyboardEvent(KeyboardEventsTestable.globalShortcutsIds["reverseWindowShortcut"], .down, nil, nil, false)
+        XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["reverseWindowShortcut"])
+        XCTAssertEqual(SwitcherSession.current?.shortcutIndex, 0)
+        handleKeyboardEvent(KeyboardEventsTestable.globalShortcutsIds["nextWindowShortcut"], .down, nil, nil, false)
+        handleKeyboardEvent(KeyboardEventsTestable.globalShortcutsIds["reverseWindowShortcut"], .up, nil, nil, false)
+        XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["reverseWindowShortcut", "nextWindowShortcut"])
+        ModifierFlags.current = []
+        handleKeyboardEvent(nil, nil, nil, [], false)
+        XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["reverseWindowShortcut", "nextWindowShortcut", "holdShortcut"])
+    }
+
     // alt-down > tab-down > alt-up > tab-up
     func testSecondMostCommonSequence() throws {
         resetState()

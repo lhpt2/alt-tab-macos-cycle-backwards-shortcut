@@ -58,7 +58,7 @@ enum ShortcutActions {
         // Gate *pressing* a Pro-only shortcut slot (index >= 1). Without this, configured Cmd+Tab
         // variants past the first keep working after Day15 lock. Mirrors the `.search` gate in
         // `TilesView` and the slot-add gate in `addShortcutSlot()`.
-        if id.hasPrefix("holdShortcut") || id.hasPrefix("nextWindowShortcut") {
+        if TriggerShortcut.isTrigger(id) {
             let index = Preferences.nameToIndex(id)
             if index >= 1 {
                 if !ProFeature.extraShortcut(index: index).attemptUse() { return }
@@ -74,6 +74,10 @@ enum ShortcutActions {
         }
         if id.hasPrefix("nextWindowShortcut") {
             App.showUiOrCycleSelection(Preferences.nameToIndex(id), false)
+            return
+        }
+        if id.hasPrefix("reverseWindowShortcut") {
+            App.showUiOrCycleSelection(Preferences.nameToIndex(id), false, .trailing)
         }
     }
 }

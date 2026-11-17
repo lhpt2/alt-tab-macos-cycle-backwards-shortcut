@@ -24,16 +24,17 @@ class KeyRepeatTimer {
         }
     }
 
-    static func startRepeatingKeyNextWindow() {
-        let nextWindowShortcutName = Preferences.indexToName("nextWindowShortcut", SwitcherSession.current?.shortcutIndex ?? 0)
-        if let shortcut = ControlsTab.shortcuts[nextWindowShortcutName],
-           // Esc is delivered via the cghid event tap (#5585), which emits real OS key-repeats; an artificial
-           // timer would never stop, because the absorbed keyDown gives Carbon no release event to pair with,
-           // so it cycles selection to the very end (#5742). Same rationale as startRepeatingKeyPreviousWindow().
-           shortcut.shortcut.carbonKeyCode != kVK_Escape {
-            startTimerForRepeatingKey(shortcut) {
-                ShortcutActions.execute(Preferences.indexToName("nextWindowShortcut", SwitcherSession.current?.shortcutIndex ?? 0))
-            }
+    /// Arms the repeat for whichever of the session's Trigger presses (next or reverse window) is held down;
+    /// `startTimerForRepeatingKey` skips one that is up.
+    static func startRepeatingKeyTriggerPress() {
+        let index = SwitcherSession.current?.shortcutIndex ?? 0
+        for baseName in TriggerShortcut.pressBaseNames {
+            let name = Preferences.indexToName(baseName, index)
+            // Esc is delivered via the cghid event tap (#5585), which emits real OS key-repeats; an artificial
+            // timer would never stop, because the absorbed keyDown gives Carbon no release event to pair with,
+            // so it cycles selection to the very end (#5742). Same rationale as startRepeatingKeyPreviousWindow().
+            guard let shortcut = ControlsTab.shortcuts[name], shortcut.shortcut.carbonKeyCode != kVK_Escape else { continue }
+            startTimerForRepeatingKey(shortcut) { ShortcutActions.execute(name) }
         }
     }
 

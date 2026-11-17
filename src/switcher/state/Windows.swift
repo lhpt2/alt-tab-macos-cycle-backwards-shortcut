@@ -247,6 +247,15 @@ class Windows {
         }
     }
 
+    /// A reverse-press summon starts at the far end of the list, one step back from the window the user
+    /// is on. It counts as the user's pick, so the selection then follows that window by id instead of
+    /// being re-derived as the default pick when the list settles.
+    static func selectLastDisplayedWindow() {
+        guard let session = SwitcherSession.current, let index = list.lastIndex(where: { shouldDisplay($0) }) else { return }
+        session.userPickedSelection = true
+        updateSelectedAndHoveredWindowIndex(index)
+    }
+
     static func updateSelectedWindow() {
         guard let session = SwitcherSession.current else { return }
         let inputs = selectionInputs(session)

@@ -59,7 +59,7 @@ enum ModifierReleaseLog {
     private static var sequence: UInt64 = 0
     private static var claimsAwaitingKeyDown = [Chord: Int]()
     private static var latestModifiers: CarbonModifierFlags = 0
-    /// The chords Carbon can report: every registered `nextWindowShortcut`.
+    /// The chords Carbon can report: every registered Trigger press (`TriggerShortcut.isPress`).
     private static var switchingChords = Set<Chord>()
     private static let lock = NSLock()
 

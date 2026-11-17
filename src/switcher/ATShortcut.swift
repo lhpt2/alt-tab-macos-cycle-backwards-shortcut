@@ -52,7 +52,7 @@ class ATShortcut {
             shortcutModifiers: shortcutModifiersCleaned,
             holdModifiers: holdModifiersCleaned,
             isHoldShortcut: id.hasPrefix("holdShortcut"),
-            isNextWindowShortcut: id.hasPrefix("nextWindowShortcut"),
+            isNextWindowShortcut: TriggerShortcut.isPress(id),
             sessionActive: session != nil,
             isModifierOnly: shortcut.keyCode == .none,
             isSearchEditing: TilesView.isSearchEditing,
@@ -62,7 +62,7 @@ class ATShortcut {
     func shouldTrigger() -> Bool {
         let session = SwitcherSession.current
         if scope == .global {
-            if triggerPhase == .down, session == nil || index == nil || index == session?.shortcutIndex || id.hasPrefix("nextWindowShortcut") {
+            if triggerPhase == .down, session == nil || index == nil || index == session?.shortcutIndex || TriggerShortcut.isPress(id) {
                 return true
             }
             if triggerPhase == .up, let session, index == nil || index == session.shortcutIndex,
@@ -118,6 +118,21 @@ class ATShortcut {
         if state == .up {
             KeyRepeatTimer.stopTimerForRepeatingKey(id)
         }
+    }
+}
+
+/// A numbered shortcut's Trigger: one hold (modifiers only) plus its "press" keys. Each press is stored raw
+/// and registered globally combined with the same slot's hold: `nextWindowShortcut` cycles forward,
+/// `reverseWindowShortcut` cycles backward.
+enum TriggerShortcut {
+    static let pressBaseNames = ["nextWindowShortcut", "reverseWindowShortcut"]
+
+    static func isPress(_ id: String) -> Bool {
+        pressBaseNames.contains { id.hasPrefix($0) }
+    }
+
+    static func isTrigger(_ id: String) -> Bool {
+        id.hasPrefix("holdShortcut") || isPress(id)
     }
 }
 

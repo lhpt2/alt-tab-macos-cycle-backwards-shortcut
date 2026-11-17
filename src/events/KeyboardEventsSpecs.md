@@ -39,6 +39,7 @@ the resulting actions.
 Mirrors `KeyboardEventsTests.swift` 1:1.
 
 - **testMostCommonSequence** — the canonical hold-modifier → next-window → release flow.
+- **testReverseWindowPressSummonsAndCyclesUnderTheSameHold** — the Trigger's reverse press opens the switcher like the next press does, both presses cycle within that one session, and releasing the shared hold commits it.
 - **testSecondMostCommonSequence** / **testSecondMostCommonSequenceVariation** — the next most common flows resolve correctly.
 - **testSequenceWithMissingEventAndWeCanSaveTheDay** — a dropped event the machine can recover from.
 - **testSequenceWithMissingEventAndWeCanNotSaveTheDay** — a dropped event it can't recover from → predictable degradation.

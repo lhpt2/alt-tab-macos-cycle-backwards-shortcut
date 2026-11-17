@@ -23,8 +23,8 @@ enum ShortcutModifierResolver {
         if isHoldShortcut {
             return eventModifiers == (eventModifiers | shortcutModifiers)
         }
-        // nextWindowShortcut while the panel is open: also match the base key with the hold modifiers
-        // stripped, so a configured ⌥⇥ cycles on bare ⇥ once the switcher is already showing.
+        // A Trigger press (next/reverse window) while the panel is open: also match the base key with the
+        // hold modifiers stripped, so a configured ⌥⇥ cycles on bare ⇥ once the switcher is already showing.
         if sessionActive && isNextWindowShortcut {
             let baseModifiers = shortcutModifiers & ~holdModifiers
             if eventModifiers == baseModifiers { return true }

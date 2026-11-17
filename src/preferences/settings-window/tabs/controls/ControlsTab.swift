@@ -67,7 +67,7 @@ class ControlsTab {
         "hideShowAppShortcut": NSLocalizedString("Hide/Show app", comment: ""),
     ]
     private static let removableShortcutPreferences = [
-        "holdShortcut", "nextWindowShortcut",
+        "holdShortcut", "nextWindowShortcut", "reverseWindowShortcut",
         "appsToShow", "spacesToShow", "screensToShow",
         "showMinimizedWindows", "showHiddenWindows", "showFullscreenWindows", "showWindowlessApps",
         "windowOrder", "shortcutStyle",
@@ -593,6 +593,7 @@ class ControlsTab {
     private static func setAddedShortcutTriggerDefaults(_ index: Int) {
         Preferences.setShortcut(Preferences.indexToName("holdShortcut", index), keyEquivalent: "⌥", false)
         Preferences.setShortcut(Preferences.indexToName("nextWindowShortcut", index), keyEquivalent: "", false)
+        Preferences.setShortcut(Preferences.indexToName("reverseWindowShortcut", index), keyEquivalent: "", false)
         Preferences.set(Preferences.indexToName("appsToShow", index), AppsToShowPreference.all.indexAsString, false)
     }
 
@@ -688,9 +689,11 @@ class ControlsTab {
         parseOverrideKey(key) != nil
     }
 
+    private static let triggerBaseNames = ["holdShortcut"] + TriggerShortcut.pressBaseNames
+
     private static func isShortcutPreferenceKey(_ key: String) -> Bool {
         return (0..<Preferences.maxShortcutCount).contains(where: { index in
-            ["holdShortcut", "nextWindowShortcut"].contains { key == Preferences.indexToName($0, index) }
+            triggerBaseNames.contains { key == Preferences.indexToName($0, index) }
         })
     }
 
@@ -698,7 +701,7 @@ class ControlsTab {
 
     private static func applyActiveShortcutPreferences() {
         (0..<Preferences.maxShortcutCount).forEach { index in
-            ["holdShortcut", "nextWindowShortcut"].forEach { base in
+            triggerBaseNames.forEach { base in
                 let key = Preferences.indexToName(base, index)
                 if index < Preferences.shortcutCount {
                     applyShortcutPreference(key)
@@ -762,35 +765,39 @@ class ControlsTab {
                 return
             }
             addShortcut(.up, .global, shortcut, controlId, i)
-            if let nextWindowShortcut = shortcutControls[Preferences.indexToName("nextWindowShortcut", i)]?.0 {
-                nextWindowShortcut.restrictModifiers([(sender as! CustomRecorderControl).objectValue!.modifierFlags])
-                shortcutChangedCallback(nextWindowShortcut)
+            TriggerShortcut.pressBaseNames.forEach { baseName in
+                guard let press = shortcutControls[Preferences.indexToName(baseName, i)]?.0 else { return }
+                press.restrictModifiers([(sender as! CustomRecorderControl).objectValue!.modifierFlags])
+                shortcutChangedCallback(press)
             }
         } else {
             let newShortcut = combineHoldAndNextWindow(controlId, sender)
             if newShortcut == nil {
                 removeShortcutIfExists(controlId)
-                restrictModifiersOfHoldShortcut(controlId, [])
                 (sender as! CustomRecorderControl).objectValue = nil
             } else {
-                addShortcut(.down, controlId.hasPrefix("nextWindowShortcut") ? .global : .local, newShortcut!, controlId, nil)
-                restrictModifiersOfHoldShortcut(controlId, [(sender as! CustomRecorderControl).objectValue!.modifierFlags])
+                addShortcut(.down, TriggerShortcut.isPress(controlId) ? .global : .local, newShortcut!, controlId, nil)
             }
+            restrictModifiersOfHoldShortcut(controlId)
         }
     }
 
-    private static func restrictModifiersOfHoldShortcut(_ controlId: String, _ modifiers: NSEvent.ModifierFlags) {
-        if controlId.hasPrefix("nextWindowShortcut") {
-            let i = Preferences.nameToIndex(controlId)
-            if let holdShortcut = shortcutControls[Preferences.indexToName("holdShortcut", i)]?.0 {
-                holdShortcut.restrictModifiers(modifiers)
-            }
+    /// The hold recorder can't take a modifier that one of its slot's presses already uses: the combined
+    /// chord would collapse it. Both presses share the one hold, so the restriction is their union, read
+    /// from the stored (raw) presses.
+    private static func restrictModifiersOfHoldShortcut(_ controlId: String) {
+        guard TriggerShortcut.isPress(controlId) else { return }
+        let i = Preferences.nameToIndex(controlId)
+        guard let holdShortcut = shortcutControls[Preferences.indexToName("holdShortcut", i)]?.0 else { return }
+        let pressModifiers = TriggerShortcut.pressBaseNames.reduce(into: NSEvent.ModifierFlags()) { modifiers, baseName in
+            modifiers.formUnion(Preferences.shortcut(Preferences.indexToName(baseName, i))?.modifierFlags ?? [])
         }
+        holdShortcut.restrictModifiers(pressModifiers)
     }
 
     static func combineHoldAndNextWindow(_ controlId: String, _ sender: NSControl) -> Shortcut? {
         guard let baseShortcut = (sender as! RecorderControl).objectValue else { return nil }
-        if controlId.starts(with: "nextWindowShortcut") {
+        if TriggerShortcut.isPress(controlId) {
             let holdShortcut = Preferences.shortcut(Preferences.indexToName("holdShortcut", Preferences.nameToIndex(controlId)))
             return combineShortcuts(holdShortcut, baseShortcut)
         }
@@ -873,7 +880,7 @@ class ControlsTab {
     static func conflictLabel(_ id: String) -> String? {
         if arrowKeys.contains(id) { return NSLocalizedString("Arrow keys", comment: "") }
         if vimKeyActions.values.contains(id) { return NSLocalizedString("Vim keys", comment: "") }
-        if id.hasPrefix("holdShortcut") || id.hasPrefix("nextWindowShortcut") {
+        if TriggerShortcut.isTrigger(id) {
             return shortcutTitle(Preferences.nameToIndex(id)) + " - " + ShortcutEditor.triggerLabel
         }
         return staticShortcutLabels[id]
@@ -884,11 +891,11 @@ class ControlsTab {
     /// shortcut that may not be on screen, so it goes through `Preferences` (cached UserDefaults)
     /// rather than mutating a live recorder. If that recorder happens to be displayed, sync it too.
     ///
-    /// For a numbered shortcut's Trigger the hold can't stand alone, so "unassign" clears the "and
-    /// press" (nextWindowShortcut) part — e.g. ⌥+Tab becomes ⌥+(unassigned) — whether the conflict
-    /// was reported against the hold or the press.
+    /// For a numbered shortcut's Trigger the hold can't stand alone, so "unassign" clears a press part
+    /// instead — e.g. ⌥+Tab becomes ⌥+(unassigned): the conflicting press itself, or the "and press"
+    /// (nextWindowShortcut) part when the conflict was reported against the hold.
     static func unassignShortcut(_ id: String) {
-        let keyToClear = (id.hasPrefix("holdShortcut") || id.hasPrefix("nextWindowShortcut"))
+        let keyToClear = id.hasPrefix("holdShortcut")
             ? Preferences.indexToName("nextWindowShortcut", Preferences.nameToIndex(id))
             : id
         Preferences.setShortcut(keyToClear, nil)
@@ -937,16 +944,15 @@ class ControlsTab {
         }
         if controlId.hasPrefix("holdShortcut") {
             applyHoldShortcutPreference(controlId)
-            applyShortcutPreference(Preferences.indexToName("nextWindowShortcut", Preferences.nameToIndex(controlId)))
+            TriggerShortcut.pressBaseNames.forEach { applyShortcutPreference(Preferences.indexToName($0, Preferences.nameToIndex(controlId))) }
             return
         }
-        guard let shortcut = combinedShortcut(controlId) else {
+        if let shortcut = combinedShortcut(controlId) {
+            addShortcut(.down, TriggerShortcut.isPress(controlId) ? .global : .local, shortcut, controlId, nil)
+        } else {
             removeShortcutIfExists(controlId)
-            restrictModifiersOfHoldShortcut(controlId, [])
-            return
         }
-        addShortcut(.down, controlId.hasPrefix("nextWindowShortcut") ? .global : .local, shortcut, controlId, nil)
-        restrictModifiersOfHoldShortcut(controlId, [shortcut.modifierFlags])
+        restrictModifiersOfHoldShortcut(controlId)
     }
 
     private static func applyHoldShortcutPreference(_ controlId: String) {
@@ -960,7 +966,7 @@ class ControlsTab {
 
     private static func combinedShortcut(_ controlId: String) -> Shortcut? {
         guard let baseShortcut = Preferences.shortcut(controlId) else { return nil }
-        if controlId.starts(with: "nextWindowShortcut") {
+        if TriggerShortcut.isPress(controlId) {
             let holdShortcut = Preferences.shortcut(Preferences.indexToName("holdShortcut", Preferences.nameToIndex(controlId)))
             return combineShortcuts(holdShortcut, baseShortcut)
         }
@@ -1023,15 +1029,11 @@ class ControlsTab {
 
     private static func initializeShortcutRecorderState(_ index: Int) {
         guard index < Preferences.shortcutCount else { return }
-        let holdControlId = Preferences.indexToName("holdShortcut", index)
-        let nextControlId = Preferences.indexToName("nextWindowShortcut", index)
-        if let holdShortcut = shortcutControls[holdControlId]?.0 {
-            holdShortcut.objectValue = Preferences.shortcut(holdControlId)
-            shortcutChangedCallback(holdShortcut)
-        }
-        if let nextWindowShortcut = shortcutControls[nextControlId]?.0 {
-            nextWindowShortcut.objectValue = Preferences.shortcut(nextControlId)
-            shortcutChangedCallback(nextWindowShortcut)
+        triggerBaseNames.forEach { baseName in
+            let controlId = Preferences.indexToName(baseName, index)
+            guard let control = shortcutControls[controlId]?.0 else { return }
+            control.objectValue = Preferences.shortcut(controlId)
+            shortcutChangedCallback(control)
         }
     }
 

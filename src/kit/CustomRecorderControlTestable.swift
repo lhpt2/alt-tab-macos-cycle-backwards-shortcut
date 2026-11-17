@@ -3,14 +3,14 @@ import Carbon.HIToolbox.Events
 import ShortcutRecorder
 
 class CustomRecorderControlTestable {
-    /// A `holdShortcut`/`nextWindowShortcut` candidate id must resolve to an in-range shortcut index;
+    /// A Trigger (`holdShortcut`/`nextWindowShortcut`/`reverseWindowShortcut`) candidate id must resolve to an in-range shortcut index;
     /// every other id (the static "when active" shortcuts, arrow, vim) is well-formed by definition.
     /// This is the contract the recycled `ShortcutEditor` must uphold: the id handed to the conflict
     /// check is the bound preference key, not a stale placeholder. The regression that hid the
     /// conflict dialog was exactly a malformed id — the recorder's frozen `"nextWindowShortcut0"`,
     /// whose `nameToIndex` is -1 — silently matching nothing and returning `.accepted`.
     static func isWellFormedCandidateId(_ id: String) -> Bool {
-        guard id.hasPrefix("holdShortcut") || id.hasPrefix("nextWindowShortcut") else { return true }
+        guard TriggerShortcut.isTrigger(id) else { return true }
         return (0..<Preferences.shortcutCount).contains(Preferences.nameToIndex(id))
     }
 
@@ -40,23 +40,23 @@ class CustomRecorderControlTestable {
         var combos = [(String, Shortcut)]()
         for atShortcut in ControlsTab.shortcuts.values {
             guard atShortcut.id != candidateId
-                      && !((candidateId.starts(with: "holdShortcut") || candidateId.starts(with: "nextWindowShortcut")) && (atShortcut.id.starts(with: "holdShortcut") || atShortcut.id.starts(with: "nextWindowShortcut")) && Preferences.nameToIndex(candidateId) != Preferences.nameToIndex(atShortcut.id))
+                      && !(TriggerShortcut.isTrigger(candidateId) && TriggerShortcut.isTrigger(atShortcut.id) && Preferences.nameToIndex(candidateId) != Preferences.nameToIndex(atShortcut.id))
                       && !(atShortcut.shortcut.keyCode == .none && atShortcut.shortcut.modifierFlags == []) else { continue }
             // candidate is holdShortcut
             if candidateId.starts(with: "holdShortcut") {
                 // combine the candidate's (new) hold modifiers with a local shortcut, which is stored raw
-                if !atShortcut.id.starts(with: "holdShortcut") && !atShortcut.id.starts(with: "nextWindowShortcut") {
+                if !TriggerShortcut.isTrigger(atShortcut.id) {
                     combos.append((atShortcut.id, Shortcut(code: atShortcut.shortcut.keyCode, modifierFlags: [candidateShortcut.modifierFlags, atShortcut.shortcut.modifierFlags], characters: nil, charactersIgnoringModifiers: nil)))
-                // combine with the nextWindowShortcut of the same index. That shortcut is stored COMBINED
+                // combine with each press (next/reverse window) of the same index. A press is stored COMBINED
                 // with the CURRENT (old) hold, so strip the old hold before applying the candidate's new
                 // hold — otherwise changing the hold (e.g. ⌘→⌥) leaks the old modifier (⌥⌘⇥ instead of
                 // ⌥⇥) and a real conflict is missed. (No-op when nextWindow is stored raw, e.g. in tests.)
-                } else if atShortcut.id.starts(with: "nextWindowShortcut") && Preferences.nameToIndex(candidateId) == Preferences.nameToIndex(atShortcut.id) {
+                } else if TriggerShortcut.isPress(atShortcut.id) && Preferences.nameToIndex(candidateId) == Preferences.nameToIndex(atShortcut.id) {
                     let oldHoldModifiers = ControlsTab.shortcuts[Preferences.indexToName("holdShortcut", Preferences.nameToIndex(candidateId))]?.shortcut.modifierFlags ?? []
                     combos.append((atShortcut.id, Shortcut(code: atShortcut.shortcut.keyCode, modifierFlags: [candidateShortcut.modifierFlags, atShortcut.shortcut.modifierFlags.subtracting(oldHoldModifiers)], characters: nil, charactersIgnoringModifiers: nil)))
                 }
-            // candidate is nextWindowShortcut
-            } else if candidateId.starts(with: "nextWindowShortcut") {
+            // candidate is a press (next/reverse window)
+            } else if TriggerShortcut.isPress(candidateId) {
                 // combine with holdShortcut of same index
                 if (atShortcut.id.starts(with: "holdShortcut") && Preferences.nameToIndex(candidateId) == Preferences.nameToIndex(atShortcut.id)) {
                     combos.append((candidateId, Shortcut(code: candidateShortcut.keyCode, modifierFlags: [candidateShortcut.modifierFlags, atShortcut.shortcut.modifierFlags], characters: nil, charactersIgnoringModifiers: nil)))
@@ -73,18 +73,17 @@ class CustomRecorderControlTestable {
     }
 
     /// Whether `existingId`'s chords are already represented in `newCombinationsFromCandidate`,
-    /// so it must be left out of the "old" combos. For the candidate's same-index trigger pair:
-    /// the `nextWindowShortcut` always (its chord is what's being recomputed, whether the candidate
-    /// is the hold or the press), but the `holdShortcut` only when the candidate replaces it. A
-    /// press edit keeps its hold, and that hold still combines with the local shortcuts (arrows /
+    /// so it must be left out of the "old" combos. For the candidate's same-index Trigger: a press
+    /// when it is the candidate itself or the candidate is the hold (its chord is what's being
+    /// recomputed), but never the slot's OTHER press, so next and reverse can't take the same chord;
+    /// the `holdShortcut` only when the candidate replaces it. A press edit keeps its hold, and that hold still combines with the local shortcuts (arrows /
     /// vim / statics) — excluding it meant e.g. press=→ with arrow-keys selection enabled was only
     /// flagged when ANOTHER shortcut shared the same hold modifiers (the default double-⌥ holds
     /// caught ⌥+→ by luck while ⌃+→ recorded with no conflict dialog).
     static func isRecomputedInNewCombinations(_ candidateId: String, _ existingId: String) -> Bool {
-        guard (candidateId.starts(with: "holdShortcut") || candidateId.starts(with: "nextWindowShortcut"))
-                  && (existingId.starts(with: "holdShortcut") || existingId.starts(with: "nextWindowShortcut"))
+        guard TriggerShortcut.isTrigger(candidateId) && TriggerShortcut.isTrigger(existingId)
                   && Preferences.nameToIndex(candidateId) == Preferences.nameToIndex(existingId) else { return false }
-        return existingId.starts(with: "nextWindowShortcut") || candidateId.starts(with: "holdShortcut")
+        return existingId == candidateId || candidateId.starts(with: "holdShortcut")
     }
 
     static func oldCombinationsExcludingTargetOfCandidate(_ candidateId: String) -> [(String, Shortcut)] {
@@ -113,7 +112,7 @@ class CustomRecorderControlTestable {
         var combos = [(String, Shortcut)]()
         for hold in holds {
             for nonHold in nonHolds {
-                guard !nonHold.id.starts(with: "nextWindowShortcut") || Preferences.nameToIndex(nonHold.id) == Preferences.nameToIndex(hold.id) else { continue }
+                guard !TriggerShortcut.isPress(nonHold.id) || Preferences.nameToIndex(nonHold.id) == Preferences.nameToIndex(hold.id) else { continue }
                 combos.append((nonHold.id, Shortcut(code: nonHold.shortcut.keyCode, modifierFlags: [hold.shortcut.modifierFlags, nonHold.shortcut.modifierFlags], characters: nil, charactersIgnoringModifiers: nil)))
             }
         }

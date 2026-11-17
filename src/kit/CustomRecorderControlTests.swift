@@ -27,6 +27,22 @@ final class CustomRecorderControlTests: XCTestCase {
         XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("nextWindowShortcut", Shortcut(keyEquivalent: "⇧")!), .conflictWithExistingShortcut(shortcutAlreadyAssigned: "previousWindowShortcut"))
     }
 
+    /// A Trigger's two presses share one hold, so next and reverse must not take the same chord. The
+    /// reverse press is stored COMBINED here (⌥⇧⇥) while the mock stores next raw (⇥), so both storage
+    /// shapes are covered.
+    func testIsShortcutAcceptable_nextAndReversePressesOfOneShortcutCannotShareAChord() {
+        XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("reverseWindowShortcut", Shortcut(keyEquivalent: "⇧⇥")!), .accepted)
+        XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("reverseWindowShortcut", Shortcut(keyEquivalent: "⇥")!),
+            .conflictWithExistingShortcut(shortcutAlreadyAssigned: "nextWindowShortcut"))
+        XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("reverseWindowShortcut2", Shortcut(keyEquivalent: "`")!),
+            .conflictWithExistingShortcut(shortcutAlreadyAssigned: "nextWindowShortcut2"))
+        ControlsTab.shortcuts["reverseWindowShortcut"] = ATShortcut(Shortcut(keyEquivalent: "⌥⇧⇥")!, "reverseWindowShortcut", .global, .down)
+        defer { ControlsTab.shortcuts = ControlsTab.defaultShortcuts }
+        XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("nextWindowShortcut", Shortcut(keyEquivalent: "⇧⇥")!),
+            .conflictWithExistingShortcut(shortcutAlreadyAssigned: "reverseWindowShortcut"))
+        XCTAssertEqual(CustomRecorderControlTestable.isShortcutAcceptable("reverseWindowShortcut", Shortcut(keyEquivalent: "⇧⇥")!), .accepted)
+    }
+
     /// Regression: S1 = ⌥+Tab, S2 = ⌘+Tab. Changing S2's *hold* from ⌘ to ⌥ makes it ⌥+Tab, which must
     /// conflict with S1. The registry here mirrors PRODUCTION, where `nextWindowShortcut` is stored
     /// COMBINED (hold ∪ key) — unlike `defaultShortcuts`, which stores it raw, which is precisely why
@@ -195,6 +211,8 @@ final class CustomRecorderControlTests: XCTestCase {
         XCTAssertTrue(CustomRecorderControlTestable.isWellFormedCandidateId("nextWindowShortcut"))    // index 0
         XCTAssertTrue(CustomRecorderControlTestable.isWellFormedCandidateId("nextWindowShortcut2"))   // index 1
         XCTAssertTrue(CustomRecorderControlTestable.isWellFormedCandidateId("holdShortcut3"))         // index 2
+        XCTAssertTrue(CustomRecorderControlTestable.isWellFormedCandidateId("reverseWindowShortcut2")) // index 1
+        XCTAssertFalse(CustomRecorderControlTestable.isWellFormedCandidateId("reverseWindowShortcut0"))
         // The regressing placeholders: trailing "0" → nameToIndex -1 → out of range.
         XCTAssertFalse(CustomRecorderControlTestable.isWellFormedCandidateId("nextWindowShortcut0"))
         XCTAssertFalse(CustomRecorderControlTestable.isWellFormedCandidateId("holdShortcut0"))

@@ -210,7 +210,7 @@ class ControlsTab {
         if action.starts(with: "holdShortcut") {
             SwitcherSession.current = nil
         }
-        if action.starts(with: "nextWindowShortcut") {
+        if TriggerShortcut.isPress(action) {
             let session = SwitcherSession.current ?? {
                 let new = SwitcherSession()
                 SwitcherSession.current = new
