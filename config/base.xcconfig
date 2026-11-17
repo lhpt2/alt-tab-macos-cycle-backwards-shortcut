@@ -10,6 +10,8 @@ MACOSX_DEPLOYMENT_TARGET = 12.0
 SWIFT_VERSION = 5.8 // xcode 14.2 translates this to 5.0; xcode 16.2 as 5.8
 SWIFT_TREAT_WARNINGS_AS_ERRORS = YES
 INFOPLIST_FILE = Info.plist
+// Keeps library validation on: the process holds Accessibility and Screen Recording, so it must only load
+// code signed by its own team. Requires the embedded frameworks to share the app's signing identity.
 CODE_SIGN_ENTITLEMENTS = alt_tab_macos.entitlements
 FRAMEWORK_SEARCH_PATHS[config=*] = $(inherited) /System/Library/PrivateFrameworks // for SkyLight.framework
 LD_RUNPATH_SEARCH_PATHS = @executable_path/../Frameworks // load embedded frameworks at runtime; Xcode's SPM machinery adds the absolute PackageFrameworks path automatically before this, which is fine in Debug and stale-but-harmless in Release on customer machines

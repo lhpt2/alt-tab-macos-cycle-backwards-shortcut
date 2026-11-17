@@ -2,8 +2,20 @@ class CliEvents {
     private static var messagePort: CFMessagePort?
     static let portName = "\(App.bundleIdentifier).cli"
 
+    /// The port accepts commands from ANY process of this user, and it has no way to tell who sent one. It
+    /// would hand every window title (which needs Screen Recording) and window focus to processes that hold
+    /// neither permission, so release builds only open it once the user opted in. Debug builds keep it for the
+    /// QA harness.
+    static var isEnabled: Bool {
+        #if DEBUG
+        return true
+        #else
+        return Preferences.commandLineEnabled
+        #endif
+    }
+
     static func observe() {
-        guard messagePort == nil else { return }
+        guard messagePort == nil, isEnabled else { return }
         var context = CFMessagePortContext(version: 0, info: nil, retain: nil, release: nil, copyDescription: nil)
         if let messagePort = CFMessagePortCreateLocal(nil, portName as CFString, handleEvent, &context, nil),
            let source = CFMessagePortCreateRunLoopSource(nil, messagePort, 0) {
@@ -617,7 +629,8 @@ class CliClient {
             }
             exit(0)
         } catch {
-            fail("AltTab.app needs to be running for CLI commands to work")
+            fail("AltTab.app needs to be running for CLI commands to work, with the CLI enabled: "
+                + "defaults write \(App.bundleIdentifier) commandLineEnabled true, then restart AltTab")
         }
     }
 

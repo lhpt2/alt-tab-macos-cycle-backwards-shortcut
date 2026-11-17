@@ -317,17 +317,9 @@ class UpgradeTab {
     }
     #endif
 
-    static func showAutoActivating() {
+    static func showActivationPrompt(_ licenseKey: String) {
         navigateToUpgradeTab()
-    }
-
-    static func showAutoActivationSuccess() {
-        refreshStatus()
-    }
-
-    static func showAutoActivationFailed(_ licenseKey: String) {
-        navigateToUpgradeTab()
-        presentActivationSheet(prefilledKey: licenseKey, autoFailedHint: true)
+        presentActivationSheet(prefilledKey: licenseKey)
     }
 }
 

@@ -20,6 +20,7 @@ class Preferences {
             "arrowKeysEnabled": "true",
             "vimKeysEnabled": "false",
             "mouseHoverEnabled": "false",
+            "commandLineEnabled": "false",
             "cursorFollowFocus": CursorFollowFocus.never.indexAsString,
             "hideColoredCircles": "false",
             "windowDisplayDelay": "100",
@@ -105,6 +106,8 @@ class Preferences {
     static var arrowKeysEnabled: Bool { CachedUserDefaults.bool("arrowKeysEnabled") }
     static var vimKeysEnabled: Bool { CachedUserDefaults.bool("vimKeysEnabled") }
     static var mouseHoverEnabled: Bool { CachedUserDefaults.bool("mouseHoverEnabled") }
+    /// Hidden opt-in (`defaults write <bundle-id> commandLineEnabled true`, then relaunch) for the CLI port.
+    static var commandLineEnabled: Bool { CachedUserDefaults.bool("commandLineEnabled") }
     static var cursorFollowFocus: CursorFollowFocus { CachedUserDefaults.macroPref("cursorFollowFocus", CursorFollowFocus.allCases) }
     static var trackpadHapticFeedbackEnabled: Bool { CachedUserDefaults.bool("trackpadHapticFeedbackEnabled") }
     static var hideColoredCircles: Bool { CachedUserDefaults.bool("hideColoredCircles") }

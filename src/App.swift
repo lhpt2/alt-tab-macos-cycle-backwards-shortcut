@@ -720,16 +720,9 @@ extension App: NSApplicationDelegate {
               !licenseKey.isEmpty else {
             return
         }
-        UpgradeTab.showAutoActivating()
-        LicenseManager.shared.activate(licenseKey) { result in
-            switch result {
-            case .success:
-                UpgradeTab.showAutoActivationSuccess()
-                App.resetPreferencesDependentComponents()
-            case .failure:
-                UpgradeTab.showAutoActivationFailed(licenseKey)
-            }
-        }
+        // Any website or app can open this URL, so it only pre-fills the key: the user confirms the
+        // activation, which would otherwise replace their stored license and send this Mac's identity.
+        UpgradeTab.showActivationPrompt(licenseKey)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
