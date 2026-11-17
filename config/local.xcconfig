@@ -1,0 +1,6 @@
+// Settings for this fork's local builds. The official pipeline overwrites this file
+// (scripts/replace_environment_variables_in_app.sh), so it never reaches an official release.
+// Signing identity from scripts/codesign/setup_local.sh.
+CODE_SIGN_IDENTITY = Local Self-Signed
+// App.version force-reads CFBundleVersion, which comes from this; without it the app aborts at launch.
+CURRENT_PROJECT_VERSION = 11.10.2
