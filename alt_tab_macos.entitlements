@@ -4,5 +4,10 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<!-- Required: CrashReporter.framework (vendor/AppCenter) is embedded pre-signed by its vendor and keeps
+	     that Team ID, so with library validation on, dyld refuses it ("different Team IDs") and AltTab
+	     aborts at launch. Removing this needs that framework re-signed with AltTab's identity first. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
 </dict>
 </plist>
