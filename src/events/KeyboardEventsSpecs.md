@@ -39,6 +39,7 @@ the resulting actions.
 Mirrors `KeyboardEventsTests.swift` 1:1.
 
 - **testMostCommonSequence** — the canonical hold-modifier → next-window → release flow.
+- **testInstantStyleStillCommitsOnHoldRelease** — with the "Instant" style (`.focusOnPress`), where each press already focused its window, releasing the hold still fires the hold action, so the session ends and the last window is committed.
 - **testReverseWindowPressSummonsAndCyclesUnderTheSameHold** — the Trigger's reverse press opens the switcher like the next press does, both presses cycle within that one session, and releasing the shared hold commits it.
 - **testSecondMostCommonSequence** / **testSecondMostCommonSequenceVariation** — the next most common flows resolve correctly.
 - **testSequenceWithMissingEventAndWeCanSaveTheDay** — a dropped event the machine can recover from.

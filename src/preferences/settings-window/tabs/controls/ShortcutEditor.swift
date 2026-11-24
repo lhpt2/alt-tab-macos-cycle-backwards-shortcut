@@ -474,7 +474,7 @@ final class AppearancePane {
             cases: ShortcutStylePreference.allCases,
             globalIndex: { Preferences.shortcutStyle.index },
             proGatedIndices: [ShortcutStylePreference.allCases.firstIndex(of: .searchOnRelease)!],
-            segmentWidth: 100,
+            segmentWidth: 80,
             attachBadge: { c in AppearanceTab.addProBadgeToShortcutStyleSegment(c, proIndex: ShortcutStylePreference.allCases.firstIndex(of: .searchOnRelease)!) },
             refreshBadge: { c, overlay in
                 AppearanceTab.refreshTrailingSegmentBadge(c, proIndex: ShortcutStylePreference.allCases.firstIndex(of: .searchOnRelease)!, overlay: overlay)

@@ -470,6 +470,9 @@
 /* No comment provided by engineer. */
 "Import settings…" = "Import settings…";
 
+/* Shortcut style: every press switches to the window at once, without showing the switcher */
+"Instant" = "Instant";
+
 /* No comment provided by engineer. */
 "Invalid license key." = "Invalid license key.";
 

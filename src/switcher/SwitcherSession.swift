@@ -17,6 +17,10 @@ final class SwitcherSession {
     let searchDiscovery = SearchDiscoveryPolicy.Opportunity()
     var isFirstSummon: Bool = true
     var forceDoNothingOnRelease: Bool = false
+    /// A `.focusOnPress` session focuses a window on every press, and each focus moves that window to the
+    /// front of the MRU. Re-sorting on those events would put the next press back on the window just left,
+    /// toggling between two windows, so the order taken at the summon holds until the session ends.
+    var freezesOrder: Bool = false
 
     /// `systemUptime` at which the panel's pixels actually reached the screen this summon — set when our own
     /// panel's WindowServer `orderedIn` arrives (WindowServerEvents), which can lag the show's main-thread work

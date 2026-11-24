@@ -116,16 +116,21 @@ enum LanguagePreference: CaseIterable, MacroPreference {
     }
 }
 
+/// Stored by index, so a new case goes at the end.
 enum ShortcutStylePreference: CaseIterable, SfSymbolMacroPreference {
     case focusOnRelease
     case doNothingOnRelease
     case searchOnRelease
+    /// Each press focuses the newly selected window at once, and the switcher is never shown. Releasing the
+    /// hold commits that window like `focusOnRelease` does.
+    case focusOnPress
 
     var localizedString: LocalizedString {
         switch self {
             case .focusOnRelease: return NSLocalizedString("Focus", comment: "")
             case .doNothingOnRelease: return NSLocalizedString("Hold", comment: "")
             case .searchOnRelease: return NSLocalizedString("Search", comment: "")
+            case .focusOnPress: return NSLocalizedString("Instant", comment: "Shortcut style: every press switches to the window at once, without showing the switcher")
         }
     }
 
@@ -134,7 +139,12 @@ enum ShortcutStylePreference: CaseIterable, SfSymbolMacroPreference {
             case .focusOnRelease: return .cursorarrowRays
             case .doNothingOnRelease: return .pauseRectangle
             case .searchOnRelease: return .magnifyingglass
+            case .focusOnPress: return .sparkles
         }
+    }
+
+    var focusesOnRelease: Bool {
+        self == .focusOnRelease || self == .focusOnPress
     }
 }
 

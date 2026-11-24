@@ -35,6 +35,21 @@ final class KeyboardEventsUtilsTests: XCTestCase {
         XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["reverseWindowShortcut", "nextWindowShortcut", "holdShortcut"])
     }
 
+    // alt-down > tab-down > tab-up > alt-up, with the `.focusOnPress` style
+    func testInstantStyleStillCommitsOnHoldRelease() throws {
+        resetState()
+        Preferences.shortcutStyle = .focusOnPress
+        defer { Preferences.shortcutStyle = .focusOnRelease }
+        ModifierFlags.current = [.option]
+        handleKeyboardEvent(nil, nil, nil, [.option], false)
+        handleKeyboardEvent(KeyboardEventsTestable.globalShortcutsIds["nextWindowShortcut"], .down, nil, nil, false)
+        handleKeyboardEvent(KeyboardEventsTestable.globalShortcutsIds["nextWindowShortcut"], .up, nil, nil, false)
+        XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["nextWindowShortcut"])
+        ModifierFlags.current = []
+        handleKeyboardEvent(nil, nil, nil, [], false)
+        XCTAssertEqual(ControlsTab.shortcutsActionsTriggered, ["nextWindowShortcut", "holdShortcut"])
+    }
+
     // alt-down > tab-down > alt-up > tab-up
     func testSecondMostCommonSequence() throws {
         resetState()

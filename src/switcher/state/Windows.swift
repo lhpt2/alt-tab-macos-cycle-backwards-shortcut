@@ -256,6 +256,14 @@ class Windows {
         updateSelectedAndHoveredWindowIndex(index)
     }
 
+    /// `.focusOnPress`: brings the selected window front while the session stays open. The selection is the
+    /// user's from here, so it follows that window by id when the focus events refresh the list.
+    static func focusSelectedWindowKeepingSession() {
+        guard let session = SwitcherSession.current, let window = selectedWindow() else { return }
+        session.userPickedSelection = true
+        window.focus()
+    }
+
     static func updateSelectedWindow() {
         guard let session = SwitcherSession.current else { return }
         let inputs = selectionInputs(session)
@@ -545,6 +553,7 @@ class Windows {
     }
 
     private static func sort() {
+        guard SwitcherSession.current?.freezesOrder != true else { return }
         // Raw, as `shouldDisplay` passes it: smart-case reads its uppercase letters, and `Search` caches per raw query.
         let query = SwitcherSession.current?.searchQuery ?? ""
         let normalizedQuery = Search.normalizedQuery(query)

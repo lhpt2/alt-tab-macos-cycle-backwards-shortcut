@@ -538,7 +538,7 @@ class AppearanceTab: NSObject {
 
     private static func addAfterKeysReleasedRow(_ table: TableGroupView) {
         let proIndex = ShortcutStylePreference.allCases.firstIndex(of: .searchOnRelease)!
-        let control = LabelAndControl.makeSegmentedControl("shortcutStyle", ShortcutStylePreference.allCases, segmentWidth: 105, extraAction: { control in
+        let control = LabelAndControl.makeSegmentedControl("shortcutStyle", ShortcutStylePreference.allCases, segmentWidth: 90, extraAction: { control in
             refreshShortcutStyleSegmentAppearance(control as! NSSegmentedControl)
             ControlsTab.syncOverrideControlsToGlobal()
             refreshAllOverrideInfoLabels()

@@ -331,6 +331,10 @@ class App: AppCenterApplication {
 
     static func previousWindowShortcutWithRepeatingKey() {
         cycleSelection(.trailing)
+        if SwitcherSession.current?.freezesOrder == true {
+            Windows.focusSelectedWindowKeepingSession()
+            return
+        }
         KeyRepeatTimer.startRepeatingKeyPreviousWindow()
     }
 
@@ -428,9 +432,15 @@ class App: AppCenterApplication {
             if shouldStartInSearchMode {
                 session.forceDoNothingOnRelease = true
             }
+            session.freezesOrder = false
             if !Windows.updatesBeforeShowing() { hideUi(); return }
             Windows.setInitialSelectedAndHoveredWindowIndex()
             if direction == .trailing { Windows.selectLastDisplayedWindow() }
+            if !session.forceDoNothingOnRelease && Preferences.effectiveShortcutStyle(shortcutIndex) == .focusOnPress {
+                session.freezesOrder = true
+                Windows.focusSelectedWindowKeepingSession()
+                return
+            }
             // Discovery lands one window at a time: a nonempty list can still omit the front app. C-01
             // caught TextEdit arriving 13ms before Finder and bypassing the empty-list grace. Wait for a
             // pending inventory too, capped so an unavailable app cannot hold the first summon forever.
@@ -452,6 +462,10 @@ class App: AppCenterApplication {
             }
         } else {
             cycleSelection(direction)
+            if session.freezesOrder {
+                Windows.focusSelectedWindowKeepingSession()
+                return
+            }
             KeyRepeatTimer.startRepeatingKeyTriggerPress()
         }
     }

@@ -66,7 +66,7 @@ class ATShortcut {
                 return true
             }
             if triggerPhase == .up, let session, index == nil || index == session.shortcutIndex,
-               !session.forceDoNothingOnRelease, Preferences.effectiveShortcutStyle(session.shortcutIndex) == .focusOnRelease {
+               !session.forceDoNothingOnRelease, Preferences.effectiveShortcutStyle(session.shortcutIndex).focusesOnRelease {
                 return true
             }
         }
@@ -98,7 +98,7 @@ class ATShortcut {
     /// `nextWindowShortcut` has cycled, the release commits one tile PAST what the user asked for.
     func settleLostRelease(_ recordedHoldRelease: Bool = false) {
         guard let session = SwitcherSession.current, !session.forceDoNothingOnRelease,
-              Preferences.effectiveShortcutStyle(session.shortcutIndex) == .focusOnRelease,
+              Preferences.effectiveShortcutStyle(session.shortcutIndex).focusesOnRelease,
               id == Preferences.indexToName("holdShortcut", session.shortcutIndex) else { return }
         let currentModifiers = cocoaToCarbonFlags(ModifierFlags.current)
         let isUpNow = currentModifiers != (currentModifiers | shortcut.carbonModifierFlags)

@@ -267,6 +267,11 @@ enum ShortcutStylePreference: CaseIterable {
     case focusOnRelease
     case doNothingOnRelease
     case searchOnRelease
+    case focusOnPress
+
+    var focusesOnRelease: Bool {
+        self == .focusOnRelease || self == .focusOnPress
+    }
 }
 
 class ModifierFlags {
