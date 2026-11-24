@@ -247,8 +247,14 @@ class Windows {
         }
     }
 
-    /// A reverse-press summon starts at the far end of the list, one step back from the window the user
-    /// is on. It counts as the user's pick, so the selection then follows that window by id instead of
+    /// With a fixed window order (anything but recently-focused) the initial pick is the window the user is
+    /// ON (`SelectionResolver`'s last-focused rule); in MRU order it is the one they were on before it.
+    static func initialPickIsTheCurrentWindow(_ session: SwitcherSession) -> Bool {
+        Applications.frontmostPid != nil && Preferences.windowOrder[session.shortcutIndex] != .recentlyFocused
+    }
+
+    /// In MRU order, a reverse-press summon starts at the far end of the list, one step back from the window
+    /// the user is on. It counts as the user's pick, so the selection then follows that window by id instead of
     /// being re-derived as the default pick when the list settles.
     static func selectLastDisplayedWindow() {
         guard let session = SwitcherSession.current, let index = list.lastIndex(where: { shouldDisplay($0) }) else { return }
@@ -296,8 +302,7 @@ class Windows {
             list: snapshot,
             selectedIndex: session.selectedIndex,
             selectedTarget: session.selectedTarget,
-            useLastFocusedRule: Applications.frontmostPid != nil
-                && Preferences.windowOrder[session.shortcutIndex] != .recentlyFocused,
+            useLastFocusedRule: initialPickIsTheCurrentWindow(session),
             visibleCountAtSummon: visibleCountAtSummon,
             userPickedSelection: session.userPickedSelection,
             restoreDefaultOnSearchClear: shouldRestoreDefaultSelectionOnSearchClear,

@@ -435,8 +435,9 @@ class App: AppCenterApplication {
             session.freezesOrder = false
             if !Windows.updatesBeforeShowing() { hideUi(); return }
             Windows.setInitialSelectedAndHoveredWindowIndex()
-            if direction == .trailing { Windows.selectLastDisplayedWindow() }
-            if !session.forceDoNothingOnRelease && Preferences.effectiveShortcutStyle(shortcutIndex) == .focusOnPress {
+            let isInstant = !session.forceDoNothingOnRelease && Preferences.effectiveShortcutStyle(shortcutIndex) == .focusOnPress
+            adjustInitialPick(session, direction, isInstant)
+            if isInstant {
                 session.freezesOrder = true
                 Windows.focusSelectedWindowKeepingSession()
                 return
@@ -467,6 +468,17 @@ class App: AppCenterApplication {
                 return
             }
             KeyRepeatTimer.startRepeatingKeyTriggerPress()
+        }
+    }
+
+    /// A reverse press must land one window back from the current one, and an instant press on a window other
+    /// than the current one. In MRU order the default pick is already the previous window; in a fixed order it
+    /// is the current window, so both step from it.
+    private static func adjustInitialPick(_ session: SwitcherSession, _ direction: Direction, _ isInstant: Bool) {
+        if Windows.initialPickIsTheCurrentWindow(session) {
+            if direction == .trailing || isInstant { cycleSelection(direction) }
+        } else if direction == .trailing {
+            Windows.selectLastDisplayedWindow()
         }
     }
 
