@@ -41,16 +41,18 @@ final class Windows {
         return (WindowOrdering.sorted(facts, by: order).compactMap { byId[$0.id] }, current)
     }
 
-    /// Raises the window and makes its app frontmost. Setting the app's AX "frontmost" attribute works for
-    /// a background app like this one, where `NSRunningApplication.activate` is ignored since macOS 14.
-    /// A window on another Space makes macOS switch to that Space only if "When switching to an application,
-    /// switch to a Space with open windows for the application" is on (System Settings → Desktop & Dock).
+    /// Fronts exactly this window (`WindowServer`), then raises it within its app. Without the private
+    /// functions it falls back to activating the app, which can jump to another Space.
     func focus(_ window: SwitchableWindow) {
         if window.app.isHidden { window.app.unhide() }
+        if WindowServer.isAvailable {
+            WindowServer.focus(pid: window.app.processIdentifier, windowId: window.id)
+        } else {
+            AXUIElementSetAttributeValue(appElement(window.app.processIdentifier), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+            window.app.activate(options: [])
+        }
         AXUIElementSetAttributeValue(window.element, kAXMainAttribute as CFString, kCFBooleanTrue)
         AXUIElementPerformAction(window.element, kAXRaiseAction as CFString)
-        AXUIElementSetAttributeValue(appElement(window.app.processIdentifier), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
-        window.app.activate(options: [])
         lastFocus[window.id] = ProcessInfo.processInfo.systemUptime
     }
 

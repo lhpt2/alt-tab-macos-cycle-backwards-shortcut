@@ -79,12 +79,14 @@ Keycode einer Taste herausfinden (das Terminal braucht dafür Bedienungshilfen):
 
 ## Grenzen
 
-- **Andere Spaces:** Ein Fenster auf einem anderen Space holt macOS nur dann heran, wenn unter
-  Systemeinstellungen → Schreibtisch & Dock „Beim Wechseln zu einem Programm, zu einem Space mit geöffneten
-  Fenstern des Programms wechseln“ an ist. Manche Apps melden ihre Fenster auf anderen Spaces gar nicht.
+- **Andere Spaces:** Ein Fenster auf einem anderen Space holt die App direkt heran, macOS wechselt dabei auf
+  dessen Space. Manche Apps melden ihre Fenster auf anderen Spaces aber gar nicht, die fehlen dann in der Liste.
 - **Reihenfolge `recent`:** Die App merkt sich Fokuswechsel zwischen Apps. Wechsel innerhalb einer App (⌘\`)
   sieht sie nicht direkt; auf dem aktuellen Space hilft die Stapelreihenfolge der Fenster aus.
 - **Minimierte Fenster, Panels und Dialoge** werden übersprungen.
 - **Gleiche Tasten wie AltTab:** Läuft AltTab mit denselben Tasten, meldet die App „schon belegt“. Dann AltTab
   beenden oder andere Tasten wählen.
-- Fenster-IDs kommen über die private, aber seit Jahren stabile Funktion `_AXUIElementGetWindow`.
+- Private, aber seit Jahren stabile Funktionen (dieselben wie bei AltTab und yabai): `_AXUIElementGetWindow`
+  für Fenster-IDs, `_SLPSSetFrontProcessWithOptions` und `SLPSPostEventRecordTo`, um genau ein Fenster nach
+  vorne zu holen, ohne dass macOS auf einen anderen Space springt. Fehlen sie nach einem macOS-Update, aktiviert
+  die App stattdessen die ganze App, dann kann der Space-Sprung wieder auftreten.
